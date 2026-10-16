@@ -8,3 +8,11 @@ BP (Con trỏ cơ sở / Khung stack)
 Thanh ghi đóng vai trò là điểm mốc cố định của một khung hàm (stack frame).
 
 Được dùng kết hợp với độ lệch (offset) để truy xuất các tham số hoặc biến cục bộ được lưu trên stack 
+
+
+có dùng AI:
+Thanh ghi r1: Được sử dụng làm thanh ghi tính toán trung gian tích cực thông qua các phép dịch bit (r1 += r4 rol 0x3, r1 += r3 lsl 0x4) và dùng làm giá trị dịch 
+chuyển trong lệnh sp -= r1 asr 0x1.   Thanh ghi r4 và r3: Đóng vai trò cung cấp dữ liệu đầu vào hoặc hệ số dịch bit (rol 0x3, lsl 0x4) để cộng dồn vào r1, qua đó xác 
+định offset hoặc bước nhảy của con trỏ khi duyệt qua các gói dữ liệu.Thanh ghi sp (Stack Pointer) và bp (Base Pointer): Tham gia trực tiếp vào việc truy xuất các 
+vùng nhớ đệm, tham số cấu hình trên stack (như [bp+0x30]) và điều phối dịch chuyển trạng thái ngăn xếp nhằm chuẩn bị môi trường trước khi rẽ nhánh (jne LAB_00007f) 
+vào chuỗi bytecode chứa các mã fe 2b.
