@@ -1,0 +1,5 @@
+Mã nhận diện lệnh (fe 2b): Khi bộ phân tích cú pháp (Parser) đọc đến byte fe đi kèm với 2b, nó hiểu rằng đây không phải là một ký tự chữ cái hiển thị thông thường, mà là một lệnh định dạng đặc biệt (ví dụ: chuyển đổi font chữ, đổi màu, bật chế độ vẽ tọa độ, hoặc căn lề trên màn hình LCD).
+
+Tham số theo sau: Các byte nằm ngay sau fe 2b (ví dụ các số hiệu như 30 00, c9 03,...) chính là tham số tọa độ hoặc mã định danh (ID) của icon/ký tự toán học cần vẽ.
+
+Quá trình hiển thị: CPU unSP sẽ dịch các mã token này thành các lệnh cấu hình phần cứng để ghi dữ liệu trực tiếp vào bộ nhớ đệm video (VRAM) của màn hình LCD, từ đó hiển thị ra các biểu tượng hoặc công thức toán học trên máy tính cầm tay.
