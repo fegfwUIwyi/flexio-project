@@ -1,0 +1,10 @@
+R1, R2, R3, R4 (Thanh ghi đa năng):
+Dùng để thực hiện các phép tính toán học, logic, và các phép dịch bit (như rol - xoay trái, lsl - dịch trái logic, asr - dịch phải số học).
+
+SP(con trỏ ngăn xếp)
+Thanh ghi quản lý vị trí hiện tại của ngăn xếp.
+
+BP (Con trỏ cơ sở / Khung stack)
+Thanh ghi đóng vai trò là điểm mốc cố định của một khung hàm (stack frame).
+
+Được dùng kết hợp với độ lệch (offset) để truy xuất các tham số hoặc biến cục bộ được lưu trên stack 
