@@ -22,3 +22,28 @@ Khoảng đệm căn chỉnh (Padding Blocks):
 Các dải byte 00h liên tục (như đoạn 001057 đến 0010ff hay từ 001e9e đến 001fff kết thúc ngay trước mốc 002000).
 
 Đây là các khoảng trống do trình biên dịch tạo ra để căn chỉnh ranh giới trang/sector bộ nhớ, đồng thời là "mảnh đất trống" an toàn để chứa payload sau này.
+
+còn nữa ở dưới
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tổng kết quá trình phân tích và dịch ngược FirmwareDưới đây là tóm tắt toàn bộ cấu trúc và các mốc quan trọng mà chúng ta đã khám phá thành công trong quá trình
+phân tích tệp firmware của thiết bị:1. Bảng định tuyến trung tâm (Central Index Table: 0x4000 – 0x40C8)Bản chất: Đây là một bảng chứa các con trỏ 16-bit (theo 
+chuẩn Little-Endian), đóng vai trò như một bảng mục lục tổng hợp của hệ thống.Chức năng: Làm cầu nối điều hướng để CPU nhanh chóng trỏ đến các vùng dữ liệu tài 
+nguyên khác nhau mà không cần phải quét tuần tự toàn bộ bộ nhớ.2. Vùng Token và Metadata (0x3000 – 0x3400)Bản chất: Hệ thống không lưu trữ tên biến hay hàm dưới
+dạng chuỗi văn bản ASCII thông thường (plain text) mà sử dụng hệ thống mã hóa mã token nhị phân nén (byte-coded tokens) để tiết kiệm không gian bộ nhớ.Chức năng
+: Đại diện cho các tập lệnh toán học, cấu trúc cú pháp, biểu thức và các biến số của hệ thống.3. Vùng Font & Glyph Bitmap (0x7000+)Bản chất: Kho lưu trữ ma trận 
+điểm ảnh (pixel matrix) thô dùng để render giao diện.   Kết quả đạt được: Đã xây dựng script tự động bóc tách và xuất toàn bộ tập ký tự, chữ số, biểu tượng toán 
+học và các ký hiệu đặc biệt ra tệp tài nguyên hình ảnh trực quan.   4. Cơ chế hoạt động của hệ thốngKhi người dùng thực hiện mộtao tác tính toán hoặc gọi hàm, hệ
+thống sẽ tra cứu thông qua bảng chỉ mục tại 0x4000.Con trỏ này sẽ dẫn đường song song: một nhánh phục vụ cho logic tính toán (tại phân vùng token), và một nhánh 
+trỏ tới mẫu hiển thị trực quan (tại phân vùng glyph bitmap) để vẽ chính xác ký tự/phép toán đó lên màn hình LCD.
