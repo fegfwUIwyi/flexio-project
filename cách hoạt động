@@ -1,0 +1,24 @@
+Các cấu trúc quan trọng đã giải mã trên ROM
+Kiến trúc Máy ảo (VM Interpreter):
+
+Firmware sử dụng một bộ thông dịch trung gian thay vì chạy trực tiếp mã máy CPU unSP ở các phân vùng giao diện.
+
+Nhận diện chữ ký bytecode đặc trưng với byte 50h ở đuôi (ví dụ: các cặp opcode dạng xx 50 như 02 50, 03 50, 04 50, 05 50).
+
+Bảng con trỏ (Pointer Tables):
+
+Nằm ở các mốc như 001000 và 001100.
+
+Được cấu trúc dưới dạng các từ dữ liệu 16-bit (dw), đóng vai trò là "bản đồ" dẫn đường cho máy ảo trỏ tới các module kịch bản giao diện khác nhau trong ROM.
+
+Khối kịch bản UI & Chuỗi định dạng (UI Templates / Formatted Strings):
+
+Nằm ngay sau các bảng con trỏ (ví dụ các vùng quanh 001c32 đến 001f).
+
+Chứa các chuỗi ký tự mẫu lặp lại rất đều đặn (như %Gv@, %, &) đi kèm tham số lệnh để máy ảo dựng lên các menu và thành phần hiển thị trên màn hình.
+
+Khoảng đệm căn chỉnh (Padding Blocks):
+
+Các dải byte 00h liên tục (như đoạn 001057 đến 0010ff hay từ 001e9e đến 001fff kết thúc ngay trước mốc 002000).
+
+Đây là các khoảng trống do trình biên dịch tạo ra để căn chỉnh ranh giới trang/sector bộ nhớ, đồng thời là "mảnh đất trống" an toàn để chứa payload sau này.
