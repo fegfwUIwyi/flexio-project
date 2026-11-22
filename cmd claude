@@ -1,0 +1,322 @@
+tức là mục đích là để giả lập và debug file rom này có tich hợp debug màn hình phím bấm,...  để mình nghiên cứu máy flexiofx799vn.kiến trúc unsp Kiến trúc CPU (Sunplus u'nSP 16-bit):
+
+Định địa chỉ theo Word (Word-addressed): Khác với các CPU phổ thông tính địa chỉ theo từng Byte (8-bit), mỗi ô địa chỉ trong u'nSP tương ứng với 1 Word (16-bit / 2 bytes). Vì vậy, khi mở file dump nhị phân bằng Hex Editor hoặc Ghidra, bạn phải chia đôi offset byte (hoặc cấu hình chế độ u'nSP trong Ghidra) để khớp với con trỏ lệnh (PC) thực tế.
+Độ dài lệnh biến thiên: Một lệnh máy có thể dài 1 Word (16-bit) hoặc 2 Words (32-bit, thường dùng cho các lệnh gọi hàm xa call, nhảy xa goto, hoặc nạp hằng số 16-bit).
+
+Tập thanh ghi chính: Gồm các thanh ghi đa năng R1, R2, R3, R4, con trỏ cơ sở BP, con trỏ ngăn xếp SP, thanh ghi trạng thái SR (chứa các cờ và bit chọn Bank/Segment bộ nhớ), và con trỏ lệnh PC.
+
+Cấu trúc lưu trữ & Chip nhớ ngoài:
+Chip Flash SPI ngoài: Trên bo mạch sử dụng chip nhớ Macronix MX25V1006F (1 Megabit = 128 KB Serial NOR Flash). Đây chính là nguồn gốc của file mx25.bin (chứa bảng font chữ, dữ liệu chuỗi giao diện, bảng cấu hình và các phân đoạn mã mở rộng).
+ROM nội (Internal Mask/Flash ROM): Nằm trực tiếp bên trong khối keo đen (COB - Chip-on-Board) của vi xử lý chính, chứa bootloader, trình thông dịch lõi và các hàm xử lý toán học cơ bản.
+Bản đồ bộ nhớ RAM (Memory Map) đặc trưng:
+Vùng đệm nhập liệu (Input Buffer): Bắt đầu quanh địa chỉ 0x0200.
+Vùng đệm lịch sử (History Buffer): Nằm ở khu vực 0x0400.
+Vùng đệm màn hình (Render Buffer / VRAM): Nằm từ 0x0500 đến 0x0B58, lưu trực tiếp ma trận điểm ảnh (dot-matrix) hiển thị ra màn hình LCD.
+
+Lưu ý khi dịch ngược và giả lập:
+
+Khi phân tích mx25.bin trong Ghidra, hãy chọn đúng Processor là u'nSP (Little Endian).
+Vì chip u'nSP dùng cơ chế phân trang/segment (thông qua thanh ghi SR hoặc thanh ghi mở rộng DS/CS tùy biến thể u'nSP 1.0 hay 2.0), địa chỉ gọi hàm xa (call) thường bao gồm cả 6-bit segment cao ghép với 16-bit offset thấp (tạo thành không gian địa chỉ 22-bit).file mình gửi này chính là mx25.bin đó chỉ khác tên.debug tích hợp xem hex của ram này chỉnh ram, hiện cụ thể từng lệnh đã thực thi để giả lập máy fx flexio 799 vn.còn 1 ảnh nữa là ảnh hình máy tính sẽ dùng trong giả lập để bạn căn màn hình và phím bấm để bạn căn cho nó đúng nút bấm,màn hình ,...
+
+Mình chưa build được emulator chạy được, vì file .bin này không chứa chương trình của máy. Mình đã phân tích kỹ trước khi viết code để khỏi làm một cái vỏ không chạy.
+
+Kết quả phân tích file SPIMem_...bin (128 KB)
+
+Dữ liệu chỉ nằm ở 0x0000–0x92F3 (khoảng 37 KB), từ 0xC000 trở đi toàn là 00.
+Trong 64K word, mình không tìm thấy lệnh RETF (0x9A90) hay RETI (0x9A98) nào, và chỉ có 3 lệnh giống CALL. Code u'nSP thật không thể thiếu những lệnh này.
+Nội dung trông giống bảng con trỏ (offset) kèm chuỗi giao diện mã hóa theo bảng ký tự riêng và bitmap. Khớp với mô tả của bạn là font, chuỗi và bảng cấu hình.
+
+Vậy bootloader, trình thông dịch và các hàm toán nằm trong ROM nội của chip (khối keo đen), đúng như bạn nói. Chỉ với flash SPI này, CPU giả lập sẽ không có lệnh nào để chạy. Phần nó cung cấp là dữ liệu mà ROM nội đọc qua SPI.
+
+Cần thêm gì để làm tiếp
+
+Dump ROM nội của chip (đọc qua chân debug/ICE hoặc dump trực tiếp từ chip). Đây là thứ bắt buộc để máy khởi động.
+Thông tin SoC cụ thể (mã in trên chip) để mình chọn đúng bản u'nSP (1.0/1.1/1.2/2.0) và bản đồ thanh ghi I/O (LCD, phím, SPI). Mỗi bản có tập lệnh khác nhau.
+
+Tên file ảnh fx_image_1_at_0x0001EF7C.png cho thấy ảnh nằm ở offset 0x1EF7C của một dump nào đó. Dump đó không phải file .bin này, vì ở offset đó file này toàn số 0. Có thể bạn còn một bản dump đầy đủ hơn. Nếu có, bạn gửi lên giúp mình.
+
+Việc mình làm được ngay khi bạn đồng ý
+
+Dựng sẵn exe giả lập gồm: lõi CPU u'nSP, bộ disassembler, trace từng lệnh đã chạy, hex view/sửa RAM, và cửa sổ hiển thị dùng ảnh máy làm skin với màn hình và phím căn theo ảnh. Bạn cắm ROM nội vào là chạy.
+Hoặc làm trước công cụ phân tích flash: xem hex, tách bitmap/font, giải mã chuỗi theo bảng ký tự.
+
+Bạn muốn mình đi hướng nào, và bạn có ROM nội (hoặc bản dump đầy đủ) không?
+
+mình dump đc mỗi file này.thôi thì cứ kiểu xây giả lập trước đi rom chính chưa biết dump sao Phiên bản kiến trúc tập lệnh: u'nSP 2.0 (hoặc u'nSP v2+ nâng cao)
+
+Các dòng chip u'nSP đời cũ (v1.0/v1.1) chỉ chuyên cho xử lý âm thanh hoặc máy tính bỏ túi đơn giản đời cũ.
+
+Đối với một dòng máy tính khoa học hiện đại có khả năng xử lý hình học không gian, tính toán ma trận lớn và chạy các thuật toán cấu trúc phức tạp như Fx-799VN, hãng buộc phải dùng dòng u'nSP 2.0 với các cải tiến về tập lệnh mở rộng, không gian thanh ghi lớn hơn và khả năng quản lý bộ nhớ ngoài (SPI Flash) hiệu quả.
+
+Dòng SoC cụ thể trong thực tế thương mại:
+
+Mình đang lấy mã nguồn tham chiếu u'nSP của MAME để dựng đúng tập lệnh cho lõi CPU, trước khi viết emulator.
+
+Mình đã tìm được vùng màn hình trên ảnh (x 279–2115, y 1128–1877); giờ đang dò tiếp từng phím để căn đúng vị trí.
+
+Continuer
+
+Mình đang chạy thử exe với ROM mẫu để kiểm tra màn hình, trace và debugger hoạt động thật.
+
+Mình đã build xong khung giả lập + debugger Fx799Emu.exe. Ảnh máy được dùng làm skin, màn hình và 50 phím đã căn khớp với ảnh. Mình đã chạy thử demo.bin dưới Wine: nạp ROM, chạy, màn hình vẽ đúng, trace và disassembler đều hoạt động. Mình chưa thử trên Windows thật.
+
+Chức năng
+
+Lõi CPU u'nSP: địa chỉ theo word 22-bit (CS:PC), thanh ghi, cờ N/Z/S/C, DS/FR, ngắt IRQ/FIQ. Phần giải mã lệnh mình bám theo mã nguồn u'nSP của MAME.
+Debugger: xem thanh ghi, disassembly có đánh dấu PC, click dòng để đặt breakpoint, và danh sách các lệnh đã thực thi kèm địa chỉ.
+Hex view/sửa RAM: click ô, gõ hex, Enter để ghi. Cuộn bằng chuột hoặc PgUp/PgDn, chuyển giữa vùng bus và flash SPI.
+Console lệnh: gõ help để xem, ví dụ s 10, g, bp 00:8000, m 500, w 500 ffff, rom file [base], flash file.
+Phím: bấm chuột trên skin hoặc dùng bàn phím (số, + - * /, Enter, Backspace, Esc, mũi tên). Phím F5/F6/F9/F10 là chạy/reset/breakpoint/bước. Trạng thái phím hiện ở dòng trạng thái. Hiện chưa nối vào CPU, vì ma trận phím chưa biết.
+Màn hình: đọc VRAM từ RAM theo cấu hình mặc định 0x0500, 192×63, 1bpp. Chỉnh bằng lcd <base> <w> <h> <mode 0..3>.
+
+Giới hạn hiện tại
+
+Chưa có ROM nội thì máy không boot được. File flash 128KB bạn gửi chỉ chứa dữ liệu, không có lệnh RETF/RETI nào, nên chỉ xem được bằng flash <file> rồi mf 0. demo.bin là ROM mẫu mình tự viết để thử, nó tô sọc lên VRAM.
+Chưa làm lệnh mở rộng của u'nSP 2.0 (0xFF80). Gặp lệnh này CPU dừng và báo lỗi. Cũng chưa có DIVS, MULS uu/us, timer, bộ điều khiển LCD, SPI và ma trận phím. Các phần này phải làm sau khi có ROM nội để biết thanh ghi I/O.
+Bản đồ RAM/IO (0x0000–0x6FFF RAM, 0x7000–0x7FFF I/O) là mình đặt tạm, chỉnh bằng ramsize, io. Chế độ màn hình mặc định cũng là đoán, cần đối chiếu khi có ROM thật.
+Mã giải lệnh dựa trên MAME (phần disassembler dưới giấy phép GPL-2), nên bản mã nguồn kèm theo cũng nên coi là GPL-2.
+
+Bước tiếp theo: cách lấy ROM nội phụ thuộc mã in trên chip SoC. Bạn đọc giúp mình mã đó (hoặc chụp khối keo đen), mình sẽ xem có đường dump qua chân debug/ICE hoặc nạp bootloader không, rồi làm tiếp phần lệnh 2.0 và ngoại vi.
+
+Files are in /mnt/user-data/outputs:
+
+Fx799Emu.exe
+demo.bin
+Fx799Emu_src.zip
+Fx799Emu.exe
+Demo
+BIN
+Fx799Emu src
+ZIP
+
+tôi thấy bạn rất chuyên nghiệp.bây giờ mình muốn đặt trước file dump ic lúc trước kia thì làm thế nào
+
+Mình đã làm cho exe tự nạp file dump khi mở, và đóng gói sẵn với dump SPI của bạn trong Fx799Emu_pack.zip. Mình đã thử mở bản này dưới Wine: dump nạp đúng, vùng Memory hiện luôn dữ liệu flash. Chưa thử trên Windows thật.
+
+Giải nén zip ra một thư mục, trong đó có sẵn:
+
+Fx799Emu.exe
+flash.bin: chính là file SPIMem_...bin bạn gửi, đã đổi tên.
+startup.txt: mỗi dòng là một lệnh console chạy khi mở (dòng bắt đầu bằng # là ghi chú). Hiện có lệnh mf 0 để mở thẳng vùng flash.
+README.txt
+
+Bạn bấm đúp Fx799Emu.exe là dùng được ngay.
+
+Các file trong thư mục này mình đặt tên cố định để exe tự nhận:
+
+flash.bin: dump SPI flash, tự nạp để xem trong vùng Memory [FLASH].
+rom.bin: dump ROM nội, tự nạp ở địa chỉ word 0 rồi reset CPU. Khi bạn dump được ROM nội thì chỉ cần đặt file đó vào đây.
+startup.txt: chạy theo thứ tự, ví dụ thêm lcd 500 192 63 0 hoặc bp 00:8000.
+
+Ngoài ra, bạn vẫn có thể nạp tay bằng nút Load Flash, lệnh flash <file>, hoặc chạy Fx799Emu.exe "flash đường_dẫn;mf 0".
+
+Dump flash vẫn chỉ để xem dữ liệu. CPU chưa chạy được gì cho đến khi có rom.bin (ROM nội).
+
+Fx799Emu pack
+ZIP
+FX799VN_FLASH.BIN
+BIN
+
+chứa gì
+
+File FX799VN_FLASH.BIN giống hệt file SPIMem_2026-09-20_12_13_29.bin bạn gửi trước, từng byte và cùng MD5 d50b7b4c…. Đây không phải dump mới. Lệnh file báo "Targa image" là nhận nhầm do vài byte đầu tình cờ trùng, không phải ảnh.
+
+Nội dung của nó:
+
+Dung lượng: 131072 byte (128 KB), đúng với chip MX25V1006F.
+Vùng có dữ liệu: chỉ từ 0x0000 đến 0x92F3 (khoảng 37 KB), gồm vài khối dữ liệu xen kẽ với các đoạn trống.
+Phần còn lại: từ 0x92F4 đến hết toàn là 00.
+Không có code u'nSP: không có lệnh RETF hay RETI nào, chỉ có 3 từ trùng mẫu CALL, nhiều khả năng là dữ liệu.
+Loại dữ liệu: trông như bảng offset kèm chuỗi và dữ liệu đồ họa (font/bitmap), khớp với mô tả của bạn. Mình mới nhìn theo thống kê và hexdump, chưa giải mã nên chưa chắc chắn.
+
+Vì vậy file này chưa đủ để chạy máy, vẫn cần ROM nội của chip. Nếu có bản dump khác thì bạn gửi lên, mình so sánh được.
+
+Bạn muốn mình mổ xẻ dữ liệu bên trong không? Mình có thể thử tách từng khối, dò bảng offset và thử vẽ các khối đó thành bitmap để xem có phải font hay ký tự màn hình không.
+
+icudt51.dll
+DLL
+icuin51.dll
+DLL
+icuuc51.dll
+DLL
+msvcp100.dll
+DLL
+msvcr100.dll
+DLL
+
+phân tích xem có rom không
+
+Trong 5 file DLL này không có ROM của máy. Mình đã kiểm tra bên trong từng file:
+
+File	Là gì	Kết quả kiểm tra
+icudt51.dll (22 MB)	Dữ liệu Unicode/ngôn ngữ của thư viện ICU 51	Mình đọc mục lục thì thấy 2769 mục chuẩn của ICU (2548 locale .res, 188 bảng mã .cnv, vài bảng chuẩn hóa chữ), không có mục lạ. Không có tên nào chứa fx, flexio, rom, unsp hay casio.
+icuin51.dll, icuuc51.dll	Mã của thư viện ICU 51	Là code x86 bình thường, không có dữ liệu thừa.
+msvcp100.dll, msvcr100.dll	Thư viện chạy Visual C++ 2010	Có 5968 byte nối vào cuối file, rất có thể là chữ ký số của Microsoft.
+
+Mình cũng quét mẫu lệnh RETF/RETI của u'nSP trên cả 5 file. Mật độ ở mức ngẫu nhiên bình thường, nên không có đoạn code u'nSP nào ẩn trong đó.
+
+ICU 51 và VC++ 2010 hay đi kèm các phần mềm Windows viết bằng Qt 5.x. Có thể bạn lấy mấy DLL này từ thư mục của một phần mềm giả lập hoặc phần mềm hỗ trợ máy Flexio.
+
+Nếu thế, ROM thường nằm ở file chính của phần mềm đó, không phải ở DLL. Bạn gửi giúp mình:
+
+File .exe chính của phần mềm.
+Các file dữ liệu cùng thư mục như .bin, .rom, .dat, .pak, .res.
+
+Ảnh skin bạn gửi trước đó có tên fx_image_1_at_0x0001EF7C.png, nghĩa là nó được trích từ một file nhị phân ở offset 0x1EF7C. File gốc đó có thể là chỗ chứa firmware. Bạn nhớ nó là file nào thì gửi lên, mình sẽ quét tìm ROM u'nSP trong đó.
+
+có thư mục như này bên trong toàn dll cái nào có thể có rom nhất
+
+La réponse de Claude a été interrompue.
+
+có thư mục như này bên trong toàn dll cái nào có thể có rom nhất
+
+Bốn thư mục này (accessible, iconengines, imageformats, platforms) là thư mục plugin chuẩn của Qt 5, nên trong đó gần như chắc chắn không có ROM. Mình đoán từ tên thư mục, chưa quét được file nào bên trong, nhưng các plugin này có tên và vai trò cố định:
+
+Thư mục	DLL thường thấy	Làm gì
+platforms	qwindows.dll	Cho Qt chạy được trên Windows
+imageformats	qjpeg.dll, qgif.dll, qsvg.dll, qico.dll…	Đọc các định dạng ảnh
+iconengines	qsvgicon.dll	Vẽ icon SVG
+accessible	qtaccessiblewidgets.dll	Hỗ trợ trợ năng
+
+Cùng với ICU và MSVC bạn gửi lúc nãy, đây là bộ chạy của một phần mềm viết bằng Qt. ROM, nếu có, sẽ nằm ở file riêng của phần mềm đó, không nằm trong các thư viện chung này.
+
+Trong thư mục gốc của phần mềm, các file đáng nghi nhất theo thứ tự là:
+
+File .exe chính: Qt thường nhúng dữ liệu vào exe bằng tài nguyên .qrc. Ảnh skin tên ..._at_0x0001EF7C có thể cũng nằm trong exe, nếu đúng thì ROM rất có thể nằm cùng chỗ.
+DLL có tên lạ, không bắt đầu bằng Qt5…, ví dụ tên có fx, core, emu, sim, calc. Nhóm này là DLL do hãng viết, thường chứa lõi giả lập và firmware.
+File dữ liệu cạnh exe như .bin, .rom, .dat, .pak, .rcc, hoặc thư mục tên data, res, rom.
+
+Bạn không cần đoán. Gửi cho mình file .exe chính và các DLL không phải Qt5*, icu*, msvc*, lib*, mình sẽ quét. ROM thường dễ nhận vì file lớn, khoảng 64–512 KB, nằm gọn trong một khối và có mật độ lệnh u'nSP cao (nhiều RETF, CALL, GOTO).
+
+Nếu thư mục có nhiều file, bạn chụp danh sách có cột Size, mình sẽ chỉ ra file nên gửi trước.
+
+Fx799VN.exe
+EXE
+
+Mình đang xem exe này làm gì với khối dữ liệu 17 MB mã hóa ở phía sau, vì đó là chỗ ROM có thể nằm.
+
+Mình đang tìm xem Demo.epm (192 KB, bên trong exe) là loại mã máy gì, vì rất có thể đây chính là ROM.
+
+Trong Fx799VN.exe có ROM của máy, nhưng mình nghi chip này không phải u'nSP như bạn đã ghi.
+
+Về file exe: đây là phần mềm chính hãng "Flexio Fx799VN Emulator Ver0.01" (viết bằng Qt5). Trong code có các hàm CEmuCpu::LoadROMCode, LoadImage, DownLoadInfoToICE, và các tên lớp như CCpu, CKeyStatus. Ảnh skin của bạn đúng là lấy từ file này, ở offset 0x1EF7C.
+
+Dữ liệu nhúng trong exe: mình đọc được bảng tài nguyên Qt của exe, trong đó có:
+
+Demo.epm, 196608 byte (192 KB), lưu nguyên không nén. Đây là ứng viên chính cho mã chương trình, vì exe nạp file này qua LoadImage.
+spif.bin, nén zlib, giải nén ra cũng 196608 byte. Đây là ảnh SPI flash của emulator. Khoảng 78% byte giống dump flash bạn gửi, và dữ liệu thật chỉ nằm đến 0x0A633.
+4 ảnh skin PNG (trắng, xanh lá, hồng và Emu.png), TTF và các icon chỉ thị.
+
+Mình đã trích Demo.epm và spif.bin ra để bạn tải về.
+
+Điểm đáng ngờ về kiến trúc: trong Demo.epm mình không tìm thấy lệnh RETF/RETI của u'nSP, kể cả khi đọc theo little-endian hay big-endian. Code u'nSP thật thì không thể thiếu các lệnh này. Tên hàm của emulator cũng không giống u'nSP (WakeupFromPorta, GetSFRegister, DoStrobeOutput, AddCarryToHighByte). Vì vậy Demo.epm có thể không phải code u'nSP, hoặc phần mô tả u'nSP mà bạn có là sai. Mình chưa xác định được kiến trúc thật, nên nếu nạp Demo.epm vào emulator mình viết thì CPU sẽ không chạy đúng.
+
+Còn khoảng 17 MB sau bảng tài nguyên, có nhiều chữ ký PNG nằm trong đó. Mình chưa phân tích kỹ, nhưng khả năng cao là skin chứ không phải ROM.
+
+Cách xác định kiến trúc thật: phần mềm chính hãng này tự giả lập CPU, nên đoạn code x86 của lớp CCpu trong exe chính là tài liệu chuẩn của tập lệnh. Mình có thể đọc các hàm đó để suy ra mã lệnh, thanh ghi, ngoại vi, rồi sửa emulator của mình theo đúng chip.
+
+Bạn muốn mình làm theo hướng đó không?
+
+Demo
+EPM
+Spif
+BIN
+
+cái file spif.bin chính là file mình gửi bạn lúc đầu
+
+Checking whether the file matches the original dump.
+
+Mình kiểm tra lại cho chắc, vì lúc nãy so sánh byte thì thấy chưa hoàn toàn giống.
+
+Hai file giống nhau về kiểu nhưng không phải cùng một file. Mình vừa so sánh từng byte:
+
+	File bạn gửi đầu tiên	spif.bin từ exe
+Dung lượng	128 KB	192 KB
+Dữ liệu thật đến	0x92F3	0xA633
+MD5	d50b7b4c…	42357769…
+Chỉ 118 byte đầu (0x00–0x75) giống nhau.
+Trong 128 KB đầu có 29.025 byte khác nhau. Phần còn lại giống ở nhiều đoạn, nhưng từ 0x0614 đến 0x68CE (và còn nhiều chỗ khác) nội dung đã khác.
+Đoạn 0x92F4–0xA633 của spif.bin có 2954 byte dữ liệu, còn file của bạn ở đoạn này toàn 00.
+
+Cùng một họ dữ liệu (cùng kiểu bảng ở đầu và cùng cách xếp), nhưng đây là hai bản khác nhau, nhiều khả năng khác phiên bản hoặc nội dung. Mình chưa kết luận được spif.bin là bản mới hơn hay cũ hơn.
+
+Nếu file kia đúng là dump từ chip thật, thì để so cho chắc bạn kiểm tra MD5 của file gốc xem có khớp d50b7b4c… không.
+
+Có một điểm mình muốn bạn lưu ý: ROM nhiều khả năng nằm ở Demo.epm, không phải spif.bin. Mình vẫn đề xuất đọc phần code CCpu trong exe để xác định kiến trúc CPU thật. Bạn muốn mình làm bước đó không?
+
+có lẽ nào là bản năm 2025 và 2026 của flexio fx 799vn
+
+Có thể, nhưng mình chưa chứng minh được, vì chưa có bằng chứng về phiên bản trong hai file.
+
+Hai mốc thời gian đang có
+
+Emulator: exe được build ngày 11/07/2025 (đọc từ dấu thời gian trong file). Vì vậy spif.bin bên trong nó là dữ liệu từ khoảng giữa năm 2025 trở về trước.
+File dump của bạn: tên SPIMem_2026-09-20_... có ngày 20/09/2026. Đó là ngày công cụ đọc flash lưu file, chưa phải ngày của firmware trong máy. Dù vậy, máy được dump sau emulator mấy tháng, nên khả năng cao là firmware mới hơn.
+
+Mình đã tìm cả chuỗi chữ lẫn chuỗi năm dạng UTF-16 (2025, 2026, Ver…) trong cả hai file nhưng không thấy chuỗi nào. Chỉ dựa vào hai file này thì chưa kết luận được bản nào cũ hay mới.
+
+Có một điều mình muốn sửa lại. Lúc đầu mình nói file dump chỉ chứa dữ liệu. Giờ mình thấy trong cả dump của bạn, spif.bin và Demo.epm đều có cùng một đoạn byte trông như mã máy, ví dụ 4E 33 21 32 21 39 21 38 21 3C 21 3B 21 20 70 ở gần đầu file. Vậy flash SPI có thể chứa cả code của một kiến trúc khác u'nSP, chứ không chỉ font và chuỗi. Trong Demo.epm còn có một chuỗi chữ là "Anton Tech" ở offset 0xA99, nhưng mình chưa biết nó có ý nghĩa gì.
+
+Cách kiểm tra
+
+Trên máy thật, bạn mở màn hình hiển thị phiên bản (thường nằm trong menu SETUP hoặc mục reset/version) rồi cho mình biết số phiên bản.
+Bạn cho mình biết máy mua hoặc sản xuất khoảng khi nào (tem ở mặt sau).
+Nếu bạn có dump thứ hai từ máy khác hoặc đời khác, mình so sánh để biết chỗ nào thay đổi giữa các đời.
+
+Vì lõi CPU là yếu tố quyết định, mình vẫn đề xuất đọc phần code CCpu trong exe để xác định kiến trúc thật. Khi biết kiến trúc, mình disassemble được Demo.epm và đoạn code trong flash, rồi biết bản nào là firmware mới hơn.
+
+mình thấy bạn rất chuyên nghiệp nhưng khi nào cần suy nghĩ sâu thì thế còn không thì thôi cho đỡ tốn token mình mới dùng bản claude free thôi
+
+Cảm ơn bạn. Mình sẽ trả lời ngắn gọn với việc đơn giản, và chỉ phân tích sâu, dài khi việc đó thật sự cần, ví dụ đọc phần code CCpu để xác định kiến trúc.
+
+Bạn muốn mình tiếp tục bước đó luôn không?
+
+ok
+
+Mình đã tìm ra hàm giải mã lệnh trong exe và đang kiểm chứng trên Demo.epm.
+
+Mình đã xác định được cách exe giải mã lệnh, và kết quả cho thấy Demo.epm không phải mã u'nSP:
+
+Cách giải mã: hàm giải mã trong exe lấy một từ 16-bit rồi so từng trường hợp. Từ 0x2BFE và 0x2BFF được xử lý riêng, các từ dạng 0x002x và 0x003x có nhánh riêng, còn lại chia theo byte cao (87 nhóm, từ 0x01 đến 0x57).
+Kiểm chứng: trong Demo.epm, byte cao tập trung vào vài giá trị (0x4E, 0x21, 0x20, 0x49, 0x43…). Từ 0x2BFE xuất hiện 2186 lần, rất giống một lệnh hay gặp. Đây là kiểu lệnh 16-bit với byte cao là mã lệnh, không giống u'nSP, vốn lấy 4 bit cao làm mã lệnh.
+Kết luận: chip này không phải u'nSP. Vì vậy emulator mình viết chưa chạy được ROM này.
+
+Bước tiếp theo là đọc khoảng 68 hàm xử lý lệnh trong exe để suy ra ý nghĩa từng lệnh, thanh ghi, bộ nhớ và ngoại vi. Việc này khá dài. Bạn muốn mình làm không?
+
+nó là mã hóa à
+
+Nhiều khả năng là không. Đây là mã máy của một bộ lệnh khác, không phải u'nSP:
+
+Entropy không cao: khoảng 6.5 đến 7.0 trên thang 8. Dữ liệu mã hóa tốt thường gần 8, trong khi mã máy thường nằm ở mức 6 đến 7.
+Có tính lặp: từ 0x2BFE lặp lại 2186 lần, và một số byte cao như 0x4E, 0x21, 0x49, 0x43 xuất hiện rất nhiều. Mã hóa tốt sẽ làm các giá trị phân bố đều, không lặp thế này.
+Có cấu trúc rõ: ở đầu file có một dãy giá trị lặp kiểu bảng, có đoạn toàn 00 dài 332 từ, và có chuỗi chữ đọc được là "Anton Tech".
+Khớp với trình giải mã trong exe: hàm giải mã lệnh chia nhóm theo byte cao của từ 16-bit, và byte cao thật trong file tập trung vào đúng dải đó (59% từ nằm trong 0x01–0x57).
+
+Điều mình chưa kiểm tra được là exe có xáo trộn nhẹ dữ liệu (ví dụ XOR) trước khi giải mã không. Với các dấu hiệu trên thì khả năng đó thấp. Bước đọc 68 hàm xử lý lệnh sẽ cho biết chắc luôn.
+
+ok
+
+Mình đã hiểu chuyện gì đang xảy ra: máy đang chạy đúng, nhưng bảng phím mình gán tạm bị sai, nên bấm nút này lại ra số của nút khác. Mình sẽ dò bảng phím thật bằng cách bấm thử từng điểm ma trận và xem ROM hiện chữ gì.
+
+Continuer
+
+Mình đang dò bảng phím thật trong exe chính hãng, vì đoán thì không ổn được. Đoán bằng cách nhìn hình đã cho kết quả lẫn lộn.
+
+Mình đã sửa một phần: các phím số giờ nên ra đúng số, nhưng các phím còn lại chưa sửa được.
+
+Vì sao bạn thấy bấm OPTN ra số 0 và bấm 9 ra số 6
+
+Máy chạy đúng, ROM thật đang nhận phím. Lỗi nằm ở bảng nối phím mà bản trước mình gán tạm theo thứ tự, nên mỗi nút nối nhầm sang điểm khác của ma trận phím. Nút OPTN rơi đúng vào điểm của phím 0, nút 9 rơi vào điểm của phím 6.
+Mình cho ROM nhận từng điểm của ma trận phím (8 chân PB × 7 chân PA) và đọc ký tự hiện ra. Mười phím số có quy luật bàn phím số rõ ràng: 1 2 3 ở PB0 (PA0–PA2), 4 5 6 ở PB1, 7 8 9 ở PB2, còn 0 ở PB0/PA3.
+Bản này đã gán đúng 10 phím số và phím ON (mình chọn điểm PB0/PA6 theo kết quả thử).
+
+Còn dở
+
+Các phím còn lại: mình chưa suy ra được bảng nối phím cho các phím khác (+ − × ÷ =, hàm, MENU, SHIFT, ALPHA…). Trong exe chính hãng, mình đã lấy được vị trí 50 nút nhưng không tìm thấy phần nối nút với chân quét.
+Hình ảnh: nét chữ còn bị cụt và chồng chéo ở nhiều màn hình, nên mình chưa nhận ra được chữ cho các phím hàm. Nguyên nhân có thể là cách mình mô phỏng chip LCD ngoài chưa chuẩn.
+Phím ON: mình chưa chắc điểm PB0/PA6 đúng.
+Mình chưa thử bản đóng gói này trên Wine vì Wine trong môi trường của mình hỏng.
+
+Cách bạn giúp mình tìm các phím còn lại: trong console gõ tap 0 4 (nghĩa là bấm PB0/PA4 rồi thả) và nhìn màn hình hiện ký tự gì. Ví dụ tap ra dấu cộng thì gõ key ADD 0 4. Tên các phím có trong file keymap.txt. Các điểm ma trận cần thử là PB0–PB7 × PA0–PA5.
+
+Nếu bạn gửi mình ảnh màn hình sau vài lần tap, mình sẽ cùng đối chiếu và điền bảng.
