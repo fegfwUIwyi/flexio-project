@@ -1,0 +1,35 @@
+Dưới đây là bản tóm tắt bạn có thể copy gửi cho AI khác để làm tiếp.
+
+---
+
+**Dự án**: giả lập và debugger máy tính Flexio Fx799VN (Thiên Long). File đang dùng: `FX799_Debugger_v15.html`, một file HTML duy nhất chứa trình giả lập JavaScript (bản gốc do ChatGPT viết, mình đã sửa thêm).
+
+**Quy tắc bắt buộc**
+- Không sửa ROM.
+- Không đổi giao diện trừ khi được yêu cầu.
+- Mỗi lần sửa phải tăng số phiên bản (v15 → v16…) ở tên file và thẻ `<title>`.
+- Không cần chạy lại cả bộ kiểm tra khi chỉ đổi tên hoặc chữ nhỏ.
+
+**Phần cứng đã xác định**
+- CPU là **Elan ePS6900 (RISC II)**, lệnh 16-bit, ROM 98304 từ. Không phải u'nSP như mô tả ban đầu.
+- ROM nằm trong exe chính hãng `Fx799VN.exe` (Qt) dưới dạng tài nguyên: `Demo.epm` (ROM) và `spif.bin` (ảnh flash SPI). Bộ lệnh ở mục 12 của datasheet EPS6900.
+- **LCD** là chip ngoài 192×64 qua PORTD/PORTE: bit 7 PORTD là xung ghi, bit 6 chọn lệnh/dữ liệu, bit 0 là RD#, bit 4 là CS. Lệnh `B0`–`B7` chọn trang, `10`–`1F`/`00`–`0F` chọn cột, `AF`/`AE` bật tắt.
+- Thanh biểu tượng là hàng điểm ảnh trên cùng (hàng 0, bit 0) tại các cột 7, 15, 23, 31, 47, 55, 63, 71, 79, 87, 95, 103, 111, 127, 135, 143, 151, 175. Pin dùng 3 bit ở cột 183–185. Hình ảnh icon lấy từ BMP trong exe.
+- **Phím**: ma trận PB0–7 × PA0–6 (bảng `keyMatrix` trong HTML). ON không nằm trong ma trận mà là reset (`cpu.powerOn()` giữ lại RAM). Quét phím chạy trong ISR Timer0 (`0xD1A7` → `0xD2A1`), `0xD27F` soi riêng AC (PB3/PA5), ring buffer phím ở bank 6 (`RE1`/`RE2`), `scanAckPC=0xD1FB`.
+
+**Đã làm**
+- SHIFT 7 ON: giữ SHIFT và 7 lúc bấm ON thì vào màn hình DIAGNOSTIC / Press AC. Từ lúc tắt thì vài giây sau tự tắt, từ lúc bật thì về màn hình tính toán. Cả hai đúng theo mô tả máy thật.
+- Hiện icon thật thay chữ, hình pin 3 mức, thêm icon RCL (bit 39, chưa kiểm chứng).
+- Tab **Màn hình lớn** và tab **Log phím** (tải/xóa log).
+- Sửa lỗi lõi: ngắt chen giữa `RPT` và lệnh được lặp gây lỗi hiển thị hiếm. Cách sửa: không cho ngắt khi `rpt_on`.
+
+**Việc còn lại**
+1. **Test phím trong SHIFT 7 ON**: máy thật bấm AC thì hiện thanh menu (đầy đủ icon), rồi vài giây sau tự tắt, các phím khác không nhận. Trên bản giả lập, bấm AC không phản ứng. Nghi ngờ: khi SHIFT+7 còn giữ, ISR quét dừng ở phím đầu tiên (`7` ở PB2) nên không thấy AC ở PB3. Ngoài ra, phím chỉ được đưa vào khi CPU ngủ. Trong chế độ này `PAINTEN=0`, `R4A.5=1`.
+2. Lỗi tính toán chậm rồi báo lỗi (ví dụ hex `-0.c`), sau đó máy đơ không nhận phím. Chưa điều tra. Cần so sánh với máy thật (người dùng có bản 2025, trong khi bản này có thể là 2026).
+3. Kiểm tra bit 39 của RCL.
+
+**Cách kiểm tra đã dùng**: lấy class `Cpu` trong HTML (từ dòng `const BUNDLED_ROM` đến `const keyMatrix`) chạy trong Node. Test DOM bằng jsdom, giả lập canvas. Dò lỗi hiển thị bằng cách chạy cùng một kịch bản với thời điểm lệch khác nhau rồi so hash `cpu.gram`.
+
+**Bảng phím [PB, PA]**: 1[0,0] 2[0,1] 3[0,2] 0[0,3] Dot[0,4] x10[0,5] Equ[0,6] · 4[1,0] 5[1,1] 6[1,2] Add[1,3] Sub[1,4] Ans[1,5] · 7[2,0] 8[2,1] 9[2,2] Mul[2,3] Div[2,4] Del[2,5] · RCL[3,0] Eng[3,1] LPar[3,2] RPar[3,3] SD[3,4] AC[3,5] · Neg[4,0] DMS[4,1] Log[4,2] Sin[4,3] Cos[4,4] M+[4,5] · Frac[5,0] Sqrt[5,1] PowX2[5,2] PowXY[5,3] LogXY[5,4] Tan[5,5] · Calc[6,0] Int[6,1] Down[6,2] VarX[6,3] Optn[6,4] Ln[6,5] · Shift[7,0] Alpha[7,1] Left[7,2] Up[7,3] Right[7,4] Menu[7,5].
+
+Bạn nên gửi kèm `FX799_Debugger_v15.html`, `Fx799VN.exe` (nếu cần đọc thêm), và file `EPS6900.pdf`.
